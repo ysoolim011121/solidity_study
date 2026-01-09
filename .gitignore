@@ -18,3 +18,29 @@
 
 # Hardhat coverage reports
 /coverage
+
+# Environment variables
+.env
+.env.*
+
+# Node dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Hardhat
+artifacts/
+cache/
