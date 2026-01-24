@@ -19,7 +19,7 @@ const config: HardhatUserConfig = {
       accounts: PRIVATE_KEY !== "" ? [PRIVATE_KEY] : [],
     },
   },
-  // 👇 여기가 새로 추가된 부분입니다!
+
   etherscan: {
     apiKey: ETHERSCAN_API_KEY,
   },
