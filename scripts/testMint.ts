@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
 //deploy.ts 실행 후 나온 주소를 여기에 넣는다
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const CONTRACT_ADDRESS = "0x9B97B5d23184De54084c6acE4aFf8Ac28708Ef21";
 
 async function main() {
   const [admin] = await ethers.getSigners();
