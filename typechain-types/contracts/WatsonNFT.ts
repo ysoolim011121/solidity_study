@@ -28,22 +28,29 @@ export interface WatsonNFTInterface extends Interface {
     nameOrSignature:
       | "approve"
       | "balanceOf"
+      | "documents"
+      | "finalizeStatus"
       | "getApproved"
+      | "getVerificationLink"
+      | "hasVoted"
       | "isApprovedForAll"
       | "mintDocument"
       | "name"
       | "owner"
       | "ownerOf"
+      | "platformBaseUrl"
       | "renounceOwnership"
       | "safeTransferFrom(address,address,uint256)"
       | "safeTransferFrom(address,address,uint256,bytes)"
       | "setApprovalForAll"
+      | "setPlatformBaseUrl"
       | "supportsInterface"
       | "symbol"
       | "tokenURI"
       | "transferFrom"
       | "transferOwnership"
       | "verifyDocument"
+      | "voteForDocument"
       | "wmIdToTokenId"
   ): FunctionFragment;
 
@@ -55,7 +62,9 @@ export interface WatsonNFTInterface extends Interface {
       | "DocumentMinted"
       | "MetadataUpdate"
       | "OwnershipTransferred"
+      | "StatusChanged"
       | "Transfer"
+      | "Voted"
   ): EventFragment;
 
   encodeFunctionData(
@@ -67,8 +76,24 @@ export interface WatsonNFTInterface extends Interface {
     values: [AddressLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "documents",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "finalizeStatus",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "getApproved",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getVerificationLink",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "hasVoted",
+    values: [BigNumberish, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "isApprovedForAll",
@@ -76,13 +101,24 @@ export interface WatsonNFTInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "mintDocument",
-    values: [AddressLike, BigNumberish, BytesLike, BigNumberish, string]
+    values: [
+      AddressLike,
+      BigNumberish,
+      BytesLike,
+      BigNumberish,
+      string,
+      boolean
+    ]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "ownerOf",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "platformBaseUrl",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "renounceOwnership",
@@ -99,6 +135,10 @@ export interface WatsonNFTInterface extends Interface {
   encodeFunctionData(
     functionFragment: "setApprovalForAll",
     values: [AddressLike, boolean]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setPlatformBaseUrl",
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
@@ -122,16 +162,30 @@ export interface WatsonNFTInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "voteForDocument",
+    values: [BigNumberish, boolean]
+  ): string;
+  encodeFunctionData(
     functionFragment: "wmIdToTokenId",
     values: [BigNumberish]
   ): string;
 
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "documents", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "finalizeStatus",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getApproved",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "getVerificationLink",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "hasVoted", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "isApprovedForAll",
     data: BytesLike
@@ -143,6 +197,10 @@ export interface WatsonNFTInterface extends Interface {
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "ownerOf", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "platformBaseUrl",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "renounceOwnership",
     data: BytesLike
@@ -157,6 +215,10 @@ export interface WatsonNFTInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "setApprovalForAll",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setPlatformBaseUrl",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -175,6 +237,10 @@ export interface WatsonNFTInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "verifyDocument",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "voteForDocument",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -244,22 +310,19 @@ export namespace DocumentMintedEvent {
     tokenId: BigNumberish,
     wmId: BigNumberish,
     owner: AddressLike,
-    fileHash: BytesLike,
-    timestamp: BigNumberish
+    status: BigNumberish
   ];
   export type OutputTuple = [
     tokenId: bigint,
     wmId: bigint,
     owner: string,
-    fileHash: string,
-    timestamp: bigint
+    status: bigint
   ];
   export interface OutputObject {
     tokenId: bigint;
     wmId: bigint;
     owner: string;
-    fileHash: string;
-    timestamp: bigint;
+    status: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -292,6 +355,19 @@ export namespace OwnershipTransferredEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace StatusChangedEvent {
+  export type InputTuple = [tokenId: BigNumberish, newStatus: BigNumberish];
+  export type OutputTuple = [tokenId: bigint, newStatus: bigint];
+  export interface OutputObject {
+    tokenId: bigint;
+    newStatus: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export namespace TransferEvent {
   export type InputTuple = [
     from: AddressLike,
@@ -303,6 +379,28 @@ export namespace TransferEvent {
     from: string;
     to: string;
     tokenId: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace VotedEvent {
+  export type InputTuple = [
+    tokenId: BigNumberish,
+    voter: AddressLike,
+    isOriginal: boolean
+  ];
+  export type OutputTuple = [
+    tokenId: bigint,
+    voter: string,
+    isOriginal: boolean
+  ];
+  export interface OutputObject {
+    tokenId: bigint;
+    voter: string;
+    isOriginal: boolean;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -361,7 +459,40 @@ export interface WatsonNFT extends BaseContract {
 
   balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
+  documents: TypedContractMethod<
+    [arg0: BigNumberish],
+    [
+      [bigint, bigint, bigint, bigint, string, bigint] & {
+        status: bigint;
+        upvotes: bigint;
+        downvotes: bigint;
+        endTime: bigint;
+        fileHash: string;
+        timestamp: bigint;
+      }
+    ],
+    "view"
+  >;
+
+  finalizeStatus: TypedContractMethod<
+    [tokenId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   getApproved: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
+
+  getVerificationLink: TypedContractMethod<
+    [tokenId: BigNumberish],
+    [string],
+    "view"
+  >;
+
+  hasVoted: TypedContractMethod<
+    [arg0: BigNumberish, arg1: AddressLike],
+    [boolean],
+    "view"
+  >;
 
   isApprovedForAll: TypedContractMethod<
     [owner: AddressLike, operator: AddressLike],
@@ -375,7 +506,8 @@ export interface WatsonNFT extends BaseContract {
       wmId: BigNumberish,
       fileHash: BytesLike,
       timestamp: BigNumberish,
-      tokenURI_: string
+      tokenURI_: string,
+      isSuspicious: boolean
     ],
     [bigint],
     "nonpayable"
@@ -386,6 +518,8 @@ export interface WatsonNFT extends BaseContract {
   owner: TypedContractMethod<[], [string], "view">;
 
   ownerOf: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
+
+  platformBaseUrl: TypedContractMethod<[], [string], "view">;
 
   renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
 
@@ -408,6 +542,12 @@ export interface WatsonNFT extends BaseContract {
 
   setApprovalForAll: TypedContractMethod<
     [operator: AddressLike, approved: boolean],
+    [void],
+    "nonpayable"
+  >;
+
+  setPlatformBaseUrl: TypedContractMethod<
+    [_newUrl: string],
     [void],
     "nonpayable"
   >;
@@ -437,13 +577,21 @@ export interface WatsonNFT extends BaseContract {
   verifyDocument: TypedContractMethod<
     [wmId: BigNumberish],
     [
-      [boolean, bigint, string] & {
+      [boolean, bigint, string, string, string] & {
         exists: boolean;
         tokenId: bigint;
         owner: string;
+        status: string;
+        verificationLink: string;
       }
     ],
     "view"
+  >;
+
+  voteForDocument: TypedContractMethod<
+    [tokenId: BigNumberish, isOriginal: boolean],
+    [void],
+    "nonpayable"
   >;
 
   wmIdToTokenId: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
@@ -463,8 +611,37 @@ export interface WatsonNFT extends BaseContract {
     nameOrSignature: "balanceOf"
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
+    nameOrSignature: "documents"
+  ): TypedContractMethod<
+    [arg0: BigNumberish],
+    [
+      [bigint, bigint, bigint, bigint, string, bigint] & {
+        status: bigint;
+        upvotes: bigint;
+        downvotes: bigint;
+        endTime: bigint;
+        fileHash: string;
+        timestamp: bigint;
+      }
+    ],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "finalizeStatus"
+  ): TypedContractMethod<[tokenId: BigNumberish], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "getApproved"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "getVerificationLink"
+  ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "hasVoted"
+  ): TypedContractMethod<
+    [arg0: BigNumberish, arg1: AddressLike],
+    [boolean],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "isApprovedForAll"
   ): TypedContractMethod<
@@ -480,7 +657,8 @@ export interface WatsonNFT extends BaseContract {
       wmId: BigNumberish,
       fileHash: BytesLike,
       timestamp: BigNumberish,
-      tokenURI_: string
+      tokenURI_: string,
+      isSuspicious: boolean
     ],
     [bigint],
     "nonpayable"
@@ -494,6 +672,9 @@ export interface WatsonNFT extends BaseContract {
   getFunction(
     nameOrSignature: "ownerOf"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "platformBaseUrl"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "renounceOwnership"
   ): TypedContractMethod<[], [void], "nonpayable">;
@@ -524,6 +705,9 @@ export interface WatsonNFT extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "setPlatformBaseUrl"
+  ): TypedContractMethod<[_newUrl: string], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
@@ -547,13 +731,22 @@ export interface WatsonNFT extends BaseContract {
   ): TypedContractMethod<
     [wmId: BigNumberish],
     [
-      [boolean, bigint, string] & {
+      [boolean, bigint, string, string, string] & {
         exists: boolean;
         tokenId: bigint;
         owner: string;
+        status: string;
+        verificationLink: string;
       }
     ],
     "view"
+  >;
+  getFunction(
+    nameOrSignature: "voteForDocument"
+  ): TypedContractMethod<
+    [tokenId: BigNumberish, isOriginal: boolean],
+    [void],
+    "nonpayable"
   >;
   getFunction(
     nameOrSignature: "wmIdToTokenId"
@@ -602,11 +795,25 @@ export interface WatsonNFT extends BaseContract {
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
+    key: "StatusChanged"
+  ): TypedContractEvent<
+    StatusChangedEvent.InputTuple,
+    StatusChangedEvent.OutputTuple,
+    StatusChangedEvent.OutputObject
+  >;
+  getEvent(
     key: "Transfer"
   ): TypedContractEvent<
     TransferEvent.InputTuple,
     TransferEvent.OutputTuple,
     TransferEvent.OutputObject
+  >;
+  getEvent(
+    key: "Voted"
+  ): TypedContractEvent<
+    VotedEvent.InputTuple,
+    VotedEvent.OutputTuple,
+    VotedEvent.OutputObject
   >;
 
   filters: {
@@ -643,7 +850,7 @@ export interface WatsonNFT extends BaseContract {
       BatchMetadataUpdateEvent.OutputObject
     >;
 
-    "DocumentMinted(uint256,uint32,address,bytes32,uint256)": TypedContractEvent<
+    "DocumentMinted(uint256,uint32,address,uint8)": TypedContractEvent<
       DocumentMintedEvent.InputTuple,
       DocumentMintedEvent.OutputTuple,
       DocumentMintedEvent.OutputObject
@@ -676,6 +883,17 @@ export interface WatsonNFT extends BaseContract {
       OwnershipTransferredEvent.OutputObject
     >;
 
+    "StatusChanged(uint256,uint8)": TypedContractEvent<
+      StatusChangedEvent.InputTuple,
+      StatusChangedEvent.OutputTuple,
+      StatusChangedEvent.OutputObject
+    >;
+    StatusChanged: TypedContractEvent<
+      StatusChangedEvent.InputTuple,
+      StatusChangedEvent.OutputTuple,
+      StatusChangedEvent.OutputObject
+    >;
+
     "Transfer(address,address,uint256)": TypedContractEvent<
       TransferEvent.InputTuple,
       TransferEvent.OutputTuple,
@@ -685,6 +903,17 @@ export interface WatsonNFT extends BaseContract {
       TransferEvent.InputTuple,
       TransferEvent.OutputTuple,
       TransferEvent.OutputObject
+    >;
+
+    "Voted(uint256,address,bool)": TypedContractEvent<
+      VotedEvent.InputTuple,
+      VotedEvent.OutputTuple,
+      VotedEvent.OutputObject
+    >;
+    Voted: TypedContractEvent<
+      VotedEvent.InputTuple,
+      VotedEvent.OutputTuple,
+      VotedEvent.OutputObject
     >;
   };
 }
