@@ -26,6 +26,7 @@ import type {
 export interface WatsonNFTInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "MAX_SUPPLY"
       | "approve"
       | "balanceOf"
       | "documents"
@@ -67,6 +68,10 @@ export interface WatsonNFTInterface extends Interface {
       | "Voted"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "MAX_SUPPLY",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "approve",
     values: [AddressLike, BigNumberish]
@@ -170,6 +175,7 @@ export interface WatsonNFTInterface extends Interface {
     values: [BigNumberish]
   ): string;
 
+  decodeFunctionResult(functionFragment: "MAX_SUPPLY", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "documents", data: BytesLike): Result;
@@ -451,6 +457,8 @@ export interface WatsonNFT extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  MAX_SUPPLY: TypedContractMethod<[], [bigint], "view">;
+
   approve: TypedContractMethod<
     [to: AddressLike, tokenId: BigNumberish],
     [void],
@@ -600,6 +608,9 @@ export interface WatsonNFT extends BaseContract {
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "MAX_SUPPLY"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "approve"
   ): TypedContractMethod<

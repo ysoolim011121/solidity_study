@@ -9,73 +9,88 @@ contract WatsonNFT is ERC721URIStorage, Ownable {
     using Strings for uint256;
 
     uint256 private _nextTokenId = 1;
+    uint256 public constant MAX_SUPPLY = 1000;
 
-    // -판매 및 제한 설정 추가
-    uint256 public constant MINT_PRICE = 0.01 ether; // 민팅 가격
-    uint256 public constant MAX_SUPPLY = 1000;       // 최대 발행량
-    
-    // 상태 정의 (보류, 승인, 거절)
+    uint256 public votingDuration = 3 days;
+
+    // 상태 정의
     enum Status { Pending, Approved, Rejected }
 
-    // 문서 정보를 담는 구조체
     struct DocumentInfo {
-        Status status;      // 현재 상태
-        uint256 upvotes;    // "진짜" 투표 수
-        uint256 downvotes;  // "도용" 투표 수
-        uint256 endTime;    // 투표 종료 시간
-        bytes32 fileHash;   // 파일 해시
-        uint256 timestamp;  // 등록 시간
+        Status status;
+        uint256 upvotes;
+        uint256 downvotes;
+        uint256 endTime;
+        bytes32 fileHash;
+        uint256 timestamp;
     }
 
-    // wmId => tokenId 매핑
-    mapping(uint32 => uint256) public wmIdToTokenId;
-    
-    // tokenId => 문서 상세 정보 매핑
-    mapping(uint256 => DocumentInfo) public documents;
+    // ====== 권한 관리 ======
+    mapping(address => bool) public authorizedMinters;
 
-    // 중복 투표 방지: tokenId => (지갑주소 => 투표여부)
+    modifier onlyMinter() {
+        require(authorizedMinters[msg.sender], "Not authorized minter");
+        _;
+    }
+
+    function setMinter(address _minter, bool _status) external onlyOwner {
+        authorizedMinters[_minter] = _status;
+    }
+
+    function setVotingDuration(uint256 _duration) external onlyOwner {
+        votingDuration = _duration;
+    }
+
+    // ====== 데이터 저장 ======
+    mapping(uint32 => uint256) public wmIdToTokenId;
+    mapping(bytes32 => bool) public usedFileHash;
+    mapping(uint256 => DocumentInfo) public documents;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
 
-    // 우리 플랫폼 기본 URL (도용 방지용)
     string public platformBaseUrl = "https://watson-project.com/verify/";
 
+    // ====== 이벤트 ======
     event DocumentMinted(uint256 indexed tokenId, uint32 indexed wmId, address indexed owner, Status status);
     event Voted(uint256 indexed tokenId, address indexed voter, bool isOriginal);
     event StatusChanged(uint256 indexed tokenId, Status newStatus);
 
     constructor() ERC721("WatsonDocument", "WTS") Ownable(msg.sender) {}
 
-    // 플랫폼 URL 변경 가능하게 (관리자만)
-    function setPlatformBaseUrl(string memory _newUrl) public onlyOwner {
+    function setPlatformBaseUrl(string memory _newUrl) external onlyOwner {
         platformBaseUrl = _newUrl;
     }
 
-    // -민팅 함수 수정: 누구나 돈 내고 등록 가능하게 변경
+    // ====== Mint ======
     function mintDocument(
         address to,
         uint32 wmId,
         bytes32 fileHash,
         uint256 timestamp,
-        string memory tokenURI_
-        // isSuspicious 제거: 사용자가 직접 올리므로 무조건 투표(Pending)를 거치게 함
-    ) public payable returns (uint256) {
-        // 유효성 검사 추가
-        require(msg.value >= MINT_PRICE, "Not enough ETH sent"); // 돈 확인
-        require(_nextTokenId <= MAX_SUPPLY, "Max supply reached"); // 수량 확인
+        string memory tokenURI_,
+        bool isSuspicious
+    ) external onlyMinter returns (uint256) {
+        require(_nextTokenId <= MAX_SUPPLY, "Max supply reached");
         require(wmIdToTokenId[wmId] == 0, "WM_ID already registered");
+        require(!usedFileHash[fileHash], "File already registered");
 
         uint256 tokenId = _nextTokenId++;
+
         _mint(to, tokenId);
         _setTokenURI(tokenId, tokenURI_);
 
         wmIdToTokenId[wmId] = tokenId;
+        usedFileHash[fileHash] = true;
 
-        // 사용자가 돈 내고 올리는 것이므로, 기본적으로 'Pending(보류)' 상태로 시작하여
-        // 커뮤니티(또는 관리자)의 투표/검증을 받도록 로직 강화
-        Status initialStatus = Status.Pending;
-        uint256 votingTime = block.timestamp + 3 days; 
+        Status initialStatus;
+        uint256 votingTime = 0;
 
-        // 데이터 저장
+        if (isSuspicious) {
+            initialStatus = Status.Pending;
+            votingTime = block.timestamp + votingDuration;
+        } else {
+            initialStatus = Status.Approved;
+        }
+
         documents[tokenId] = DocumentInfo({
             status: initialStatus,
             upvotes: 0,
@@ -90,13 +105,14 @@ contract WatsonNFT is ERC721URIStorage, Ownable {
         return tokenId;
     }
 
-    // 투표 기능 (사용자들이 호출)
-    function voteForDocument(uint256 tokenId, bool isOriginal) public {
+    // ====== 투표 ======
+    function voteForDocument(uint256 tokenId, bool isOriginal) external {
         DocumentInfo storage doc = documents[tokenId];
 
-        require(doc.status == Status.Pending, "Not in voting period");
+        require(doc.status == Status.Pending, "Voting not active");
         require(block.timestamp < doc.endTime, "Voting time ended");
         require(!hasVoted[tokenId][msg.sender], "Already voted");
+        require(balanceOf(msg.sender) > 0, "Only NFT holders can vote");
 
         hasVoted[tokenId][msg.sender] = true;
 
@@ -109,14 +125,13 @@ contract WatsonNFT is ERC721URIStorage, Ownable {
         emit Voted(tokenId, msg.sender, isOriginal);
     }
 
-    // 투표 종료 및 결과 반영
-    function finalizeStatus(uint256 tokenId) public {
+    // ====== 투표 종료 ======
+    function finalizeStatus(uint256 tokenId) external {
         DocumentInfo storage doc = documents[tokenId];
 
         require(doc.status == Status.Pending, "Not pending");
         require(block.timestamp >= doc.endTime, "Voting is still ongoing");
 
-        // 과반수 로직 (도용 표가 더 많으면 거절)
         if (doc.downvotes > doc.upvotes) {
             doc.status = Status.Rejected;
         } else {
@@ -126,22 +141,12 @@ contract WatsonNFT is ERC721URIStorage, Ownable {
         emit StatusChanged(tokenId, doc.status);
     }
 
-    // -출금 함수 추가
-    function withdraw() public onlyOwner {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No ether left to withdraw");
-
-        (bool success, ) = payable(owner()).call{value: balance}("");
-        require(success, "Transfer failed");
-    }
-
-    // 도용 방지 링크 확인 함수
+    // ====== 조회 ======
     function getVerificationLink(uint256 tokenId) public view returns (string memory) {
         require(ownerOf(tokenId) != address(0), "Token does not exist");
         return string(abi.encodePacked(platformBaseUrl, tokenId.toString()));
     }
 
-    // 기존 검증 함수 업그레이드
     function verifyDocument(uint32 wmId) external view returns (
         bool exists,
         uint256 tokenId,
@@ -156,17 +161,17 @@ contract WatsonNFT is ERC721URIStorage, Ownable {
         }
 
         DocumentInfo memory doc = documents[tokenId];
-        
+
         string memory statusStr;
         if (doc.status == Status.Pending) statusStr = "Pending";
         else if (doc.status == Status.Approved) statusStr = "Approved";
         else statusStr = "Rejected";
 
         return (
-            true, 
-            tokenId, 
-            ownerOf(tokenId), 
-            statusStr, 
+            true,
+            tokenId,
+            ownerOf(tokenId),
+            statusStr,
             getVerificationLink(tokenId)
         );
     }
